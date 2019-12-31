@@ -1,0 +1,19 @@
+{
+    "name": "grpc_course",
+    "version": "1.0.0",
+    "description": "course",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "serve": "nodemon server/index.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "google-protobuf": "^3.11.2",
+        "grpc": "^1.24.2"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.2"
+    }
+}
