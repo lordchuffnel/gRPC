@@ -11,8 +11,8 @@ function main() {
 
   const request = new summarize.SumRequest();
   const summary = new summarize.Summarize();
-  summary.setNum1(1);
-  summary.setNum2(2);
+  summary.setNum1(123);
+  summary.setNum2(552);
 
   request.setSummarize(summary);
 
