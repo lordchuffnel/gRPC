@@ -11,6 +11,25 @@ async function sleep(interval) {
   });
 }
 
+function doErrorCall() {
+  var client = new calcService.CalculatorServiceClient(
+    'localhost:50051',
+    grpc.credentials.createInsecure()
+  );
+
+  var number = -1; // will throw INVALID_ARGUMENT error
+  var squareRootRequest = new calc.SquareRootRequest();
+  squareRootRequest.setNumber(number);
+
+  client.squareRoot(squareRootRequest, (error, response) => {
+    if (!error) {
+      console.log('Square root is ', response.getNumberRoot());
+    } else {
+      console.log(error.message);
+    }
+  });
+}
+
 async function callFindMaximum() {
   console.log("hello I'm a gRPC Client");
 
@@ -272,7 +291,8 @@ function main() {
   // callLongGreeting();
   // callComputeAverage();
   // callBiDirect();
-  callFindMaximum();
+  // callFindMaximum();
+  doErrorCall();
 }
 
 main();

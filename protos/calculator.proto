@@ -15,6 +15,17 @@ service CalculatorService{
   // bidirectional stream
   rpc FindMaximum (stream FindMaximumRequest) returns (stream FindMaximumResponse) {};
 
+  // error codes section
+  rpc SquareRoot (SquareRootRequest) returns (SquareRootResponse) {};
+
+}
+
+message SquareRootRequest {
+  int32 number = 1;
+}
+
+message SquareRootResponse {
+  double number_root = 1;
 }
 
 message FindMaximumRequest {

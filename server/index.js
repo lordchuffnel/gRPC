@@ -12,6 +12,24 @@ async function sleep(interval) {
   });
 }
 
+function squareRoot(call, callback) {
+  var number = call.request.getNumber();
+
+  if (number >= 0) {
+    var numberRoot = Math.sqrt(number);
+    var response = new calc.SquareRootResponse();
+    response.setNumberRoot(numberRoot);
+
+    callback(null, response);
+  } else {
+    // error handling
+    return callback({
+      code: grpc.status.INVALID_ARGUMENT,
+      message: 'the number sent is not positive ' + ' number sent: ' + number
+    });
+  }
+}
+
 function findMaximum(call, callback) {
   var currentNumber = 0;
   var currentMaximum = 0;
@@ -195,7 +213,8 @@ function main() {
     sum: sum,
     primeNumberDecomposition: primeNumberDecomposition,
     computeAverage: computeAverage,
-    findMaximum: findMaximum
+    findMaximum: findMaximum,
+    squareRoot: squareRoot
   });
 
   // server.addService(service.GreetServiceService, {
