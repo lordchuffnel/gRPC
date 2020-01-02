@@ -3,8 +3,44 @@ syntax = "proto3";
 package greet;
 
 service GreetService {
+  // unary api
   rpc Greet (GreetRequest) returns (GreetResponse) {};
+
+  //server streaming api
+  rpc GreetManyTimes (GreetManyTimesRequest) returns (stream GreetManyTimesResponse) {};
+
+  // client streaming api
+  rpc LongGreet(stream LongGreetRequest) returns (LongGreetResponse) {};
+
+  // bidirectional stream
+
+  rpc GreetEveryone(stream GreetEveryoneRequest) returns (stream GreetEveryoneResponse) {};
 }
+
+message GreetEveryoneRequest {
+  Greeting greet = 1;
+}
+
+message GreetEveryoneResponse {
+  string result = 1;
+}
+
+message LongGreetRequest {
+  Greeting greet = 1;
+}
+
+message LongGreetResponse {
+  string result = 1;
+}
+
+message GreetManyTimesRequest {
+  Greeting greeting = 1;
+}
+
+message GreetManyTimesResponse {
+  string result = 1;
+}
+
 
 message Greeting {
   string first_name = 1;

@@ -6,6 +6,103 @@ var calcService = require('../server/protos/calculator_grpc_pb');
 
 var grpc = require('grpc');
 
+async function sleep(interval) {
+  return new Promise(resolve => {
+    setTimeout(() => resolve(), interval);
+  });
+}
+
+function findMaximum(call, callback) {
+  var currentNumber = 0;
+  var currentMaximum = 0;
+
+  call.on('data', request => {
+    currentNumber = request.getNumber();
+
+    if (currentNumber > currentMaximum) {
+      currentMaximum = currentNumber;
+
+      var response = new calc.FindMaximumResponse();
+      response.setMaximum(currentMaximum);
+
+      call.write(response);
+    } else {
+      // do nothing
+    }
+    console.log('Streamed number: ', request.getNumber());
+  });
+  call.on('error', error => {
+    console.error(error);
+  });
+
+  call.on('end', () => {
+    var response = new calc.FindMaximumResponse();
+    response.setMaximum(currentMaximum);
+
+    call.write(response);
+
+    call.end();
+    console.log('The end!');
+  });
+}
+
+async function greetEveryone(call, callback) {
+  call.on('data', response => {
+    var fullName =
+      response.getGreet().getFirstName() +
+      ' ' +
+      response.getGreet().getLastName();
+
+    console.log('Hello ' + fullName);
+  });
+
+  call.on('error', error => {
+    console.error(error);
+  });
+
+  call.on('end', () => {
+    console.log('Server The End...');
+  });
+
+  for (var i = 0; i < 10; i++) {
+    // var greeting = new greets.Greeting()
+    // greeting.setFirstName('Paulo')
+    // greeting.setLastName('Dichone')
+
+    var request = new greets.GreetEveryoneResponse();
+    request.setResult('Paulo Dichone');
+
+    call.write(request);
+    await sleep(1000);
+  }
+
+  call.end();
+}
+
+function computeAverage(call, callback) {
+  var sum = 0;
+  var count = 0;
+
+  call.on('data', request => {
+    sum += request.getNumber();
+
+    console.log('got number: ' + request.getNumber());
+
+    count += 1;
+  });
+  call.on('error', error => {
+    console.error(error);
+  });
+  call.on('end', () => {
+    let average = sum / count;
+
+    let response = new calc.ComputeAverageResponse();
+    response.setAverage(average);
+
+    callback(null, response);
+  });
+}
+
 function greetManyTimes(call, callback) {
   var firstName = call.request.getGreeting().getFirstName();
 
@@ -97,13 +194,16 @@ function main() {
   server.addService(calcService.CalculatorServiceService, {
     sum: sum,
     primeNumberDecomposition: primeNumberDecomposition,
+    computeAverage: computeAverage,
+    findMaximum: findMaximum
   });
 
-  server.addService(service.GreetServiceService, {
-    greet: greet,
-    greetManyTimes: greetManyTimes,
-    longGreet: longGreet
-  });
+  // server.addService(service.GreetServiceService, {
+  //   greet: greet,
+  //   greetManyTimes: greetManyTimes,
+  //   longGreet: longGreet,
+  //   greetEveryone: greetEveryone
+  // });
   server.bind('127.0.0.1:50051', grpc.ServerCredentials.createInsecure());
   server.start();
 

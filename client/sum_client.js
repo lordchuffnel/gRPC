@@ -3,7 +3,38 @@ const service = require('../server/protos/sum_grpc_pb');
 
 const grpc = require('grpc');
 
-function main() {
+function callSumManyTimes() {
+  var client = new service.SumServiceClient(
+    'localhost:50051',
+    grpc.credentials.createInsecure()
+  );
+
+  // create request
+  let request = new summarize.SumManyTimesRequest();
+  var number = 56778
+
+  request.setNumber(number);
+
+  let call = client.sumManyTimes(request, () => {});
+
+  call.on('data', response => {
+    console.log('response: ', response.getPrimeFactor());
+  });
+
+  call.on('status', status => {
+    console.log(status);
+  });
+
+  call.on('error', error => {
+    console.error(error);
+  });
+
+  call.on('end', () => {
+    console.log('streaming ended');
+  });
+}
+
+function sum() {
   const client = new service.SumServiceClient(
     'localhost:50051',
     grpc.credentials.createInsecure()
@@ -23,6 +54,11 @@ function main() {
       console.error(error);
     }
   });
+}
+
+function main() {
+  // sum()
+  callSumManyTimes();
 }
 
 main();

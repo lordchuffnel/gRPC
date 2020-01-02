@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package calculator;
+
+service CalculatorService{
+  // unary stream
+  rpc Sum (SumRequest) returns (SumResponse) {};
+
+  // server stream
+  rpc PrimeNumberDecomposition (PrimeNumberDecompositionRequest) returns ( stream PrimeNumberDecompositionResponse) {};
+
+  // client stream
+  rpc ComputeAverage (stream ComputeAverageRequest) returns (ComputeAverageResponse) {};
+
+  // bidirectional stream
+  rpc FindMaximum (stream FindMaximumRequest) returns (stream FindMaximumResponse) {};
+
+}
+
+message FindMaximumRequest {
+  int32 number = 1;
+}
+
+message FindMaximumResponse {
+  int32 maximum = 1;
+}
+
+message ComputeAverageRequest {
+  int32 number = 1;
+}
+
+message ComputeAverageResponse {
+  double average = 1;
+}
+
+message PrimeNumberDecompositionRequest {
+  int32 number = 1;
+}
+
+message PrimeNumberDecompositionResponse {
+  int32 prime_factor = 1;
+}
+
+message SumRequest {
+  int32 first_number = 1;
+  int32 second_number = 2;
+
+}
+
+message SumResponse {
+  int32 sum_result = 1;
+}
