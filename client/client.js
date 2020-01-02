@@ -11,7 +11,23 @@ async function sleep(interval) {
   });
 }
 
+function getRPCDeadline(rpcType) {
+  timeAllowed = 5000;
+
+  switch (rpcType) {
+    case 1:
+      timeAllowed = 1000;
+    case 2:
+      timeAllowed = 7000;
+      break;
+    default:
+      console.log('invalid type: using default timeout');
+  }
+  return new Date(Date.now() + timeAllowed);
+}
+
 function doErrorCall() {
+  var deadline = getRPCDeadline(1);
   var client = new calcService.CalculatorServiceClient(
     'localhost:50051',
     grpc.credentials.createInsecure()
@@ -21,7 +37,7 @@ function doErrorCall() {
   var squareRootRequest = new calc.SquareRootRequest();
   squareRootRequest.setNumber(number);
 
-  client.squareRoot(squareRootRequest, (error, response) => {
+  client.squareRoot(squareRootRequest, {deadline:deadline}, (error, response) => {
     if (!error) {
       console.log('Square root is ', response.getNumberRoot());
     } else {
