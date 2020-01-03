@@ -4,7 +4,18 @@ var service = require('../server/protos/greet_grpc_pb');
 var calc = require('../server/protos/calculator_pb');
 var calcService = require('../server/protos/calculator_grpc_pb');
 
+const fs = require('fs');
+
+
 var grpc = require('grpc');
+
+let credentials = grpc.ServerCredentials.createSsl(
+  fs.readFileSync('../certs/ca.crt'),
+  [{
+    cert_chain: fs.readFileSync('../certs/server.crt'),
+    private_key: fs.readFileSync('../certs/server.key')
+  }]
+)
 
 async function sleep(interval) {
   return new Promise(resolve => {
