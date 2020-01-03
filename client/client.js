@@ -2,8 +2,135 @@ var greets = require('../server/protos/greet_pb');
 var service = require('../server/protos/greet_grpc_pb');
 var calc = require('../server/protos/calculator_pb');
 var calcService = require('../server/protos/calculator_grpc_pb');
+var blogs = require('../server/protos/blog_pb');
+var blogService = require('../server/protos/blog_grpc_pb');
+
+let fs = require('fs');
 
 var grpc = require('grpc');
+
+let credentials = grpc.credentials.createSsl(
+  fs.readFileSync('../certs/ca.crt'),
+  fs.readFileSync('../certs/client.key'),
+  fs.readFileSync('../certs/client.crt')
+);
+
+let unsafeCreds = grpc.credentials.createInsecure();
+
+function callDeleteBlog() {
+  var client = new blogService.BlogServiceClient(
+    'localhost:50051',
+    unsafeCreds
+  );
+
+  var deleteBlogRequest = new blogs.DeleteBlogRequest();
+  var blogId = '1';
+
+  deleteBlogRequest.setBlogId(blogId);
+
+  client.deleteBlog(deleteBlogRequest, (error, response) => {
+    if (!error) {
+      console.log('Deleted blog with id: ', response.toString());
+    } else {
+      console.error(error.message)
+    }
+  });
+}
+ 
+function callUpdateBlog() {
+  var client = new blogService.BlogServiceClient(
+    'localhost:50051',
+    unsafeCreds
+  );
+
+  var updateBlogRequest = new blogs.UpdateBlogRequest();
+
+  var newBlog = new blogs.Blog();
+
+  newBlog.setId('2');
+  newBlog.setAuthor('gary');
+  newBlog.setTitle('hello world');
+  newBlog.setContent('yay me');
+
+  updateBlogRequest.setBlog(newBlog);
+
+  console.log('blog...', newBlog.toString());
+
+  client.updateBlog(updateBlogRequest, (error, response) => {
+    if (!error) {
+    } else {
+      if (error.code === grpc.status.NOT_FOUND) {
+        console.log('not found');
+      }
+    }
+  });
+}
+
+function callReadBlog() {
+  var client = new blogService.BlogServiceClient(
+    'localhost:50051',
+    unsafeCreds
+  );
+
+  var readBlogRequest = new blogs.ReadBlogRequest();
+  readBlogRequest.setBlogId('1');
+
+  client.readBlog(readBlogRequest, (error, response) => {
+    if (!error) {
+      console.log('found a blog ', response.toString());
+    } else {
+      if (error.code === grpc.status.NOT_FOUND) {
+        console.log('not found');
+      } else {
+        // do something else
+      }
+    }
+  });
+}
+
+function callCreateBlog() {
+  var client = new blogService.BlogServiceClient(
+    'localhost:50051',
+    unsafeCreds
+  );
+
+  var blog = new blogs.Blog();
+
+  blog.setAuthor('johna');
+  blog.setTitle('first content');
+  blog.setContent('this is great');
+
+  var blogRequest = new blogs.CreateBlogRequest();
+  blogRequest.setBlog(blog);
+
+  client.createBlog(blogRequest, (error, response) => {
+    if (!error) {
+      console.log('received create blog response,', response.toString());
+    } else {
+      console.error(error);
+    }
+  });
+}
+
+function callListBlogs() {
+  var client = new blogService.BlogServiceClient(
+    'localhost:50051',
+    unsafeCreds
+  );
+
+  var emptyBlogRequest = new blogs.ListBlogRequest();
+  var call = client.listBlog(emptyBlogRequest, () => {});
+
+  call.on('data', response => {
+    console.log('client streaming response ', response.getBlog().toString());
+  });
+  call.on('error', error => {
+    console.error(error);
+  });
+  call.on('end', () => {
+    console.log('end');
+  });
+}
 
 async function sleep(interval) {
   return new Promise(resolve => {
@@ -37,13 +164,17 @@ function doErrorCall() {
   var squareRootRequest = new calc.SquareRootRequest();
   squareRootRequest.setNumber(number);
 
-  client.squareRoot(squareRootRequest, {deadline:deadline}, (error, response) => {
-    if (!error) {
-      console.log('Square root is ', response.getNumberRoot());
-    } else {
-      console.log(error.message);
+  client.squareRoot(
+    squareRootRequest,
+    { deadline: deadline },
+    (error, response) => {
+      if (!error) {
+        console.log('Square root is ', response.getNumberRoot());
+      } else {
+        console.log(error.message);
+      }
     }
-  });
+  );
 }
 
 async function callFindMaximum() {
@@ -176,10 +307,7 @@ function callPrimeNumberDecomposition() {
 }
 
 function greet() {
-  const client = new service.GreetServiceClient(
-    'localhost:50051',
-    grpc.credentials.createInsecure()
-  );
+  const client = new service.GreetServiceClient('localhost:50051', unsafeCreds);
   // we do stuff here
   const request = new greets.GreetRequest();
   const greeting = new greets.Greeting();
@@ -300,14 +428,19 @@ function callComputeAverage() {
 }
 
 function main() {
-  // greet()
-  // callGreetManyTimes()
-  // callPrimeNumberDecomposition();
-  // callSum()
-  // callLongGreeting();
-  // callComputeAverage();
-  // callBiDirect();
-  // callFindMaximum();
+  callDeleteBlog();
+  callUpdateBlog();
+  callReadBlog();
+  callListBlogs();
+  callCreateBlog();
+  greet()
+  callGreetManyTimes()
+  callPrimeNumberDecomposition();
+  callSum()
+  callLongGreeting();
+  callComputeAverage();
+  callBiDirect();
+  callFindMaximum();
   doErrorCall();
 }
 

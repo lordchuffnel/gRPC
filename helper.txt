@@ -1,4 +1,4 @@
-protoc -I=. ./protos/calculator.proto ^
+protoc -I=. ./protos/blog.proto ^
 --js_out=import_style=commonjs,binary:./server ^
 --grpc_out=./server ^
 --plugin=protoc-gen-grpc=C:\Users\fs-j\AppData\Roaming\npm\grpc_tools_node_protoc_plugin.cmd

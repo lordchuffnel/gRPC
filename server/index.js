@@ -1,21 +1,175 @@
 var greets = require('../server/protos/greet_pb');
 var service = require('../server/protos/greet_grpc_pb');
 
+var blogs = require('../server/protos/blog_pb');
+var blogService = require('../server/protos/blog_grpc_pb');
+
 var calc = require('../server/protos/calculator_pb');
 var calcService = require('../server/protos/calculator_grpc_pb');
 
-const fs = require('fs');
-
+var fs = require('fs');
 
 var grpc = require('grpc');
 
+const environment = process.env.ENVIRONMENT || 'development';
+const config = require('./knexfile')[environment];
+const knex = require('knex')(config);
+
+/* credential variable not working with nodemon, cannot open directory error */
 let credentials = grpc.ServerCredentials.createSsl(
   fs.readFileSync('../certs/ca.crt'),
-  [{
-    cert_chain: fs.readFileSync('../certs/server.crt'),
-    private_key: fs.readFileSync('../certs/server.key')
-  }]
-)
+  [
+    {
+      cert_chain: fs.readFileSync('../certs/server.crt'),
+      private_key: fs.readFileSync('../certs/server.key')
+    }
+  ],
+  true
+);
+
+let unsafeCreds = grpc.ServerCredentials.createInsecure();
+
+function deleteBlog(call, callback) {
+  var blogId = call.request.getBlogId();
+
+  console.log('getting blog...');
+
+  knex('blogs')
+    .where({ id: parseInt(blogId) })
+    .delete()
+    .returning()
+    .then(data => {
+      console.log('deleting blog...');
+      if (data) {
+        var deleteResponse = new blogs.DeleteBlogResponse();
+        deleteResponse.setBlogId(blogId);
+
+        console.log(
+          'Blog is now deleted with id: ',
+          deleteResponse.toString()
+        );
+
+        callback(null, deleteResponse);
+      } else {
+        return callback({
+          code: grpc.status.NOT_FOUND,
+          message: 'blog with that id not found'
+        });
+      }
+    });
+}
+
+function updateBlog(call, callback) {
+  var blogId = call.request.getBlog().getId();
+
+  console.log('searching for blog to update...');
+
+  knex('blogs')
+    .where({ id: parseInt(blogId) })
+    .update({
+      author: call.request.getBlog().getAuthor(),
+      title: call.request.getBlog().getTitle(),
+      content: call.request.getBlog().getContent()
+    })
+    .returning()
+    .then(data => {
+      if (data) {
+        var blog = new blogs.Blog();
+        console.log('blog found...');
+
+        blog.setId(blogId);
+        blog.setAuthor(data.author);
+        blog.setTitle(data.title);
+        blog.setContent(data.content);
+
+        var updateBlogResponse = new blogs.UpdateBlogResponse();
+        updateBlogResponse.setBlog(blog);
+
+        console.log('Updated ====', updateBlogResponse.getBlog().getId());
+
+        callback(null, updateBlogResponse);
+      }
+    });
+}
+
+function readBlog(call, callback) {
+  var blogId = call.request.getBlogId();
+
+  knex('blogs')
+    .where({
+      id: parseInt(blogId)
+    })
+    .then(data => {
+      console.log('searching for blog....');
+
+      if (data.length) {
+        var blog = new blogs.Blog();
+        console.log('blog found and sending message');
+
+        blog.setId(blogId);
+        blog.setAuthor(data[0].author);
+        blog.setTitle(data[0].title);
+        blog.setContent(data[0].content);
+
+        var blogResponse = new blogs.ReadBlogResponse();
+        blogResponse.setBlog(blog);
+
+        callback(null, blogResponse);
+      } else {
+        console.log('blog not found');
+        return callback({
+          code: grpc.status.NOT_FOUND,
+          message: 'blog not found...'
+        });
+      }
+    });
+}
+
+function createBlog(call, callback) {
+  var blog = call.request.getBlog();
+  knex('blogs')
+    .insert({
+      author: blog.getAuthor(),
+      title: blog.getTitle(),
+      content: blog.getContent()
+    })
+    .then(() => {
+      var id = blog.getId();
+
+      var addedBlog = new blogs.Blog();
+
+      addedBlog.setId(id);
+      addedBlog.setAuthor(blog.getAuthor());
+      addedBlog.setTitle(blog.getTitle());
+      addedBlog.setContent(blog.getContent());
+
+      var blogResponse = new blogs.CreateBlogResponse();
+
+      blogResponse.setBlog(addedBlog);
+
+      console.log('inserted blog with id: ', blogResponse);
+
+      callback(null, blogResponse);
+    });
+}
+
+function listBlog(call, callback) {
+  knex('blogs').then(data => {
+    data.forEach(el => {
+      var blog = new blogs.Blog();
+      blog.setId(el.id);
+      blog.setAuthor(el.author);
+      blog.setTitle(el.title);
+      blog.setContent(el.content);
+
+      var blogResponse = new blogs.ListBlogResponse();
+      blogResponse.setBlog(blog);
+
+      call.write(blogResponse);
+    });
+    call.end();
+  });
+}
 
 async function sleep(interval) {
   return new Promise(resolve => {
@@ -220,6 +374,14 @@ function longGreet(call, callback) {
 
 function main() {
   const server = new grpc.Server();
+
+  server.addService(blogService.BlogServiceService, {
+    listBlog: listBlog,
+    createBlog: createBlog,
+    readBlog: readBlog,
+    updateBlog: updateBlog,
+    deleteBlog: deleteBlog
+  });
   server.addService(calcService.CalculatorServiceService, {
     sum: sum,
     primeNumberDecomposition: primeNumberDecomposition,
@@ -227,17 +389,16 @@ function main() {
     findMaximum: findMaximum,
     squareRoot: squareRoot
   });
-
-  // server.addService(service.GreetServiceService, {
-  //   greet: greet,
-  //   greetManyTimes: greetManyTimes,
-  //   longGreet: longGreet,
-  //   greetEveryone: greetEveryone
-  // });
-  server.bind('127.0.0.1:50051', grpc.ServerCredentials.createInsecure());
+  server.addService(service.GreetServiceService, {
+    greet: greet,
+    greetManyTimes: greetManyTimes,
+    longGreet: longGreet,
+    greetEveryone: greetEveryone
+  });
+  server.bind('127.0.0.1:50051', unsafeCreds);
   server.start();
 
-  console.log('server running on port 127.0.0.1:50051');
+  console.log('server running on port 127.0.0.1:50051', unsafeCreds);
 }
 
 main();
